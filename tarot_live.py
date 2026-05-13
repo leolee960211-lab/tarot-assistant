@@ -4,20 +4,7 @@ Usage:
     streamlit run tarot_live.py --server.address 0.0.0.0 --server.port 8501
 """
 
-import subprocess
-import sys
 
-
-def _ensure(pkg: str, import_name=None) -> None:
-    try:
-        __import__(import_name or pkg)
-    except ImportError:
-        print(f"[install] pip install {pkg} ...")
-        subprocess.check_call([sys.executable, "-m", "pip", "install", pkg])
-
-
-for _pkg in ("streamlit", "openai"):
-    _ensure(_pkg)
 
 import streamlit as st
 import streamlit.components.v1 as components
