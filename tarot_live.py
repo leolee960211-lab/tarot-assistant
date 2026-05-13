@@ -1,10 +1,4 @@
-"""塔罗牌直播辅助提词器 (Tarot Live Prompter)
-
-Usage:
-    streamlit run tarot_live.py --server.address 0.0.0.0 --server.port 8501
-"""
-
-
+"""塔罗牌直播辅助提词器 (Tarot Live Prompter) 终极动态牌阵版"""
 
 import streamlit as st
 import streamlit.components.v1 as components
@@ -36,7 +30,6 @@ MAJOR_ARCANA = [
     "21. 世界 The World",
 ]
 
-
 def _suit(suit_cn: str, suit_en: str, element: str):
     pairs = [
         ("Ace", "一"), ("2", "二"), ("3", "三"), ("4", "四"), ("5", "五"),
@@ -58,32 +51,46 @@ DECKS = {
     "钱币 (土元素 14张)": PENTACLES,
 }
 
-# ==================== 牌阵定义 ====================
+# ==================== 牌阵定义 (动态支持任意数量) ====================
 SPREADS = {
-    "时间流 (过去-现在-未来)": [
+    "每日神谕 (单张)": [
+        "核心指引:今日关键能量与建议",
+    ],
+    "时间流 (3张)": [
         "过去:事件根源与既定影响",
         "现在:当下处境与核心能量",
         "未来:趋势走向与可能结果",
     ],
-    "圣三角 (现状-阻碍-建议)": [
+    "圣三角 (3张)": [
         "现状:当前真实状态",
         "阻碍:核心问题与挑战",
         "建议:破局方向与行动",
     ],
-    "二选一 (选项A-选项B-内心倾向)": [
+    "二选一 (3张)": [
         "选项A:选择A的发展走向",
         "选项B:选择B的发展走向",
         "内心倾向:你潜意识更靠近哪一方",
     ],
-    "身心灵 (身体-情感-精神)": [
+    "身心灵 (3张)": [
         "身体层面:现实物质状况",
         "情感层面:内心感受与关系",
         "精神层面:灵性指引与课题",
     ],
-    "恋人金字塔 (你-TA-关系)": [
-        "你:你在这段关系里的能量",
-        "TA:对方的真实状态与想法",
-        "关系:你们之间的核心动态",
+    "关系十字 (5张)": [
+        "现状:关系当前真实状态",
+        "对方:TA的真实想法与状态",
+        "自己:你的内在需求与状态",
+        "阻碍:你们之间的核心问题",
+        "未来:关系最终发展走向",
+    ],
+    "深度马蹄阵 (7张)": [
+        "过去:影响目前的过往事件",
+        "现在:当前的处境与状态",
+        "隐藏:未被察觉的潜在因素",
+        "阻碍:必须克服的困难挑战",
+        "环境:周围人事物的影响力",
+        "建议:打破僵局的行动指南",
+        "结果:顺其自然的发展结局",
     ],
 }
 
@@ -103,23 +110,18 @@ QUESTION_TYPES = [
     "综合:本月整体运势",
 ]
 
-# ==================== Prompt 模板 ====================
+# ==================== 动态 Prompt 模板 ====================
 PROMPT_TEMPLATE = """Role: 20年经验资深塔罗师
 Goal: 结合牌意、阵法位置及客户问题,提供精准、有神秘感且疗愈的直播口播解说。
 Context:
   UserQuestion: {question}
   SpreadName: {spread}
   CardResults:
-    - Position: {pos1}
-      Card: {card1}
-    - Position: {pos2}
-      Card: {card2}
-    - Position: {pos3}
-      Card: {card3}
+{cards_info}
 Requirements:
   Style: 神秘感、疗愈感、专业、关键词式
   Constraint: |
-    严禁长篇铺垫与客套,总字数严格控制在 150 字左右。
+    严禁长篇铺垫与客套。
     必须按以下三个短模块输出,每块 2-3 句或关键词:
     【核心能量】:3-5 个关键词概括整体场域
     【牌面暗示】:点出最关键的冲突点或象征
@@ -127,16 +129,17 @@ Requirements:
   Format: Markdown,每模块用 ## 二级标题,关键词 **加粗**,便于直播扫视。
 """
 
-
 def build_prompt(question, spread, positions, cards):
+    # 动态拼接每一张牌的信息
+    cards_info = ""
+    for pos, card in zip(positions, cards):
+        cards_info += f"    - Position: {pos}\n      Card: {card}\n"
+    
     return PROMPT_TEMPLATE.format(
         question=question,
         spread=spread,
-        pos1=positions[0], card1=cards[0],
-        pos2=positions[1], card2=cards[1],
-        pos3=positions[2], card3=cards[2],
+        cards_info=cards_info
     )
-
 
 # ==================== Streamlit UI ====================
 st.set_page_config(page_title="塔罗直播提词器", page_icon="🔮", layout="wide")
@@ -212,7 +215,7 @@ with st.sidebar:
                             help="OpenAI 兼容接口的 Key")
     base_url = st.text_input("Base URL", value="https://api.openai.com/v1",
                              help="可填 OpenAI / DeepSeek / 月之暗面 等兼容地址")
-    model_name = st.text_input("模型名", value="gpt-4o-mini")
+    model_name = st.text_input("模型名", value="gpt-4o")
     temperature = st.slider("发挥度 (Temperature)", 0.0, 1.5, 0.85, 0.05)
     st.divider()
     st.markdown("**💡 提示**\n\n抽牌后点底部 *生成口播* 按钮即可。")
@@ -228,13 +231,16 @@ with col_s:
     st.subheader("② 选择牌阵")
     spread_name = st.selectbox("牌阵", list(SPREADS.keys()), key="sp")
     positions = SPREADS[spread_name]
+    num_cards = len(positions)
 
 st.divider()
 
-# ---------- 抽牌区:三列并排 ----------
-st.subheader("③ 动态抽牌(三列并排,iPad 横屏一眼看全)")
-cols = st.columns([1, 1, 1])
+# ---------- 抽牌区:动态列数 ----------
+st.subheader(f"③ 动态抽牌 (当前需要 {num_cards} 张牌)")
+# 根据牌的数量动态创建列
+cols = st.columns(num_cards)
 chosen_cards = []
+
 for i, (col, pos_meaning) in enumerate(zip(cols, positions)):
     with col:
         st.markdown(f"**位置 {i+1}**")
@@ -263,10 +269,11 @@ if st.button("✨ 生成直播口播稿", type="primary", use_container_width=Tr
             st.success("解读中(流式输出)↓")
             placeholder = st.empty()
             buffer = ""
+            # 为了适配 7 张牌阵，调高 max_tokens
             stream = client.chat.completions.create(
                 model=model_name,
                 temperature=temperature,
-                max_tokens=300,
+                max_tokens=500,
                 stream=True,
                 messages=[
                     {"role": "system", "content": "你是一位20年经验的资深塔罗师,擅长直播口播。"},
