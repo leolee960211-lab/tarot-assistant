@@ -1,4 +1,4 @@
-"""塔罗牌直播辅助提词器 (Tarot Live Prompter) 终极动态牌阵版"""
+"""塔罗牌直播辅助提词器 (Tarot Live Prompter) 终极动态牌阵版 —— 详解版"""
 
 import streamlit as st
 import streamlit.components.v1 as components
@@ -110,23 +110,27 @@ QUESTION_TYPES = [
     "综合:本月整体运势",
 ]
 
-# ==================== 动态 Prompt 模板 ====================
+# ==================== 动态 Prompt 模板（详解版） ====================
 PROMPT_TEMPLATE = """Role: 20年经验资深塔罗师
-Goal: 结合牌意、阵法位置及客户问题,提供精准、有神秘感且疗愈的直播口播解说。
+Goal: 结合牌意、阵法位置及客户问题，提供精准、有神秘感且疗愈的直播口播解说。
 Context:
   UserQuestion: {question}
   SpreadName: {spread}
   CardResults:
 {cards_info}
 Requirements:
-  Style: 神秘感、疗愈感、专业、关键词式
+  Style: 神秘感、疗愈感、专业、娓娓道来
   Constraint: |
-    严禁长篇铺垫与客套。
-    必须按以下三个短模块输出,每块 2-3 句或关键词:
-    【核心能量】:3-5 个关键词概括整体场域
-    【牌面暗示】:点出最关键的冲突点或象征
-    【给客户的直接建议】:一句可落地的行动方向
-  Format: Markdown,每模块用 ## 二级标题,关键词 **加粗**,便于直播扫视。
+    严禁长篇铺垫与客套，但要为每一张牌给出有灵魂的解释。
+    输出结构必须严格分为两大块：
+    
+    ## 牌面详解
+      针对每一张牌，给出1-2句结合其位置含义的解释，说明牌面对客户问题的象征意义。
+      格式：**位置名 - 牌名（正/逆位）**：解释……
+    ## 综合指引
+      【核心能量】: 用3-5个关键词或短句概括整体场域，点出最关键的冲突点或启示。
+      【给客户的直接建议】: 一句可落地的、充满疗愈感的行动方向。
+  Format: Markdown, 关键词 **加粗**，便于直播扫视。
 """
 
 def build_prompt(question, spread, positions, cards):
@@ -179,8 +183,8 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-st.title("🔮 塔罗牌直播辅助提词器")
-st.caption("提问 → 选牌 → 一键流式生成神秘感口播稿")
+st.title("🔮 塔罗牌直播辅助提词器（详解版）")
+st.caption("提问 → 选牌 → 一键生成带单牌解释+总结的口播稿")
 
 # ---------- JS 巡检器:强制给所有下拉输入框加 readonly,彻底屏蔽 iPad 键盘 ----------
 components.html(
@@ -237,7 +241,6 @@ st.divider()
 
 # ---------- 抽牌区:动态列数 ----------
 st.subheader(f"③ 动态抽牌 (当前需要 {num_cards} 张牌)")
-# 根据牌的数量动态创建列
 cols = st.columns(num_cards)
 chosen_cards = []
 
@@ -269,14 +272,14 @@ if st.button("✨ 生成直播口播稿", type="primary", use_container_width=Tr
             st.success("解读中(流式输出)↓")
             placeholder = st.empty()
             buffer = ""
-            # 为了适配 7 张牌阵，调高 max_tokens
+            # 提升到 1000 tokens 以保证每张牌都能解释到
             stream = client.chat.completions.create(
                 model=model_name,
                 temperature=temperature,
-                max_tokens=500,
+                max_tokens=1000,
                 stream=True,
                 messages=[
-                    {"role": "system", "content": "你是一位20年经验的资深塔罗师,擅长直播口播。"},
+                    {"role": "system", "content": "你是一位20年经验的资深塔罗师,擅长直播口播,言辞温暖且富有洞见。"},
                     {"role": "user", "content": prompt_text},
                 ],
             )
